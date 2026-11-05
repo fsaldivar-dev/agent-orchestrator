@@ -9,7 +9,47 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
+
+const acceptArtifactReport = `-- name: AcceptArtifactReport :execrows
+INSERT INTO artifact_acceptances (report_id, reviewer_session_id, note, evidence, accepted_at)
+SELECT r.id, reviewer.id, ?1, ?2, ?3
+FROM reports r JOIN sessions worker ON worker.id = r.session_id
+JOIN sessions reviewer ON reviewer.id = ?4
+WHERE r.id = ?5 AND r.state = 'done'
+AND worker.kind = 'worker' AND worker.is_terminated = FALSE
+AND worker.activity_state IN ('idle', 'exited')
+AND worker.session_output_type IN ('artifact', 'pr_artifact')
+AND reviewer.kind = 'orchestrator' AND reviewer.is_terminated = FALSE
+AND reviewer.project_id = worker.project_id
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)))
+ON CONFLICT(report_id) DO UPDATE SET report_id = excluded.report_id
+`
+
+type AcceptArtifactReportParams struct {
+	Note              string
+	Evidence          string
+	AcceptedAt        time.Time
+	ReviewerSessionID domain.SessionID
+	ReportID          string
+}
+
+func (q *Queries) AcceptArtifactReport(ctx context.Context, arg AcceptArtifactReportParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, acceptArtifactReport,
+		arg.Note,
+		arg.Evidence,
+		arg.AcceptedAt,
+		arg.ReviewerSessionID,
+		arg.ReportID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
 
 const acknowledgeReport = `-- name: AcknowledgeReport :one
 UPDATE reports
@@ -368,6 +408,22 @@ func (q *Queries) DeferReportBatch(ctx context.Context, arg DeferReportBatchPara
 	return items, nil
 }
 
+const getArtifactAcceptance = `-- name: GetArtifactAcceptance :one
+SELECT a.accepted_at FROM artifact_acceptances a
+JOIN reports r ON r.id = a.report_id
+WHERE r.session_id = ? AND r.state = 'done'
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)))
+ORDER BY a.accepted_at DESC LIMIT 1
+`
+
+func (q *Queries) GetArtifactAcceptance(ctx context.Context, sessionID string) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getArtifactAcceptance, sessionID)
+	var accepted_at time.Time
+	err := row.Scan(&accepted_at)
+	return accepted_at, err
+}
+
 const getReport = `-- name: GetReport :one
 SELECT id, session_id, project_id, state, note, message, created_at, delivery_state, available_at, settlement_deadline, repeat_count, claim_token, claimed_at, delivery_attempts, acknowledged_at, last_error, delivery_batch_id FROM reports WHERE id = ?
 `
@@ -406,6 +462,42 @@ func (q *Queries) GetReportInterrupt(ctx context.Context, sessionID string) (tim
 	var last_interrupted_at time.Time
 	err := row.Scan(&last_interrupted_at)
 	return last_interrupted_at, err
+}
+
+const listArtifactAcceptances = `-- name: ListArtifactAcceptances :many
+SELECT r.session_id, a.accepted_at FROM artifact_acceptances a
+JOIN reports r ON r.id = a.report_id
+WHERE r.session_id IN (SELECT value FROM json_each(?)) AND r.state = 'done'
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)))
+`
+
+type ListArtifactAcceptancesRow struct {
+	SessionID  string
+	AcceptedAt time.Time
+}
+
+func (q *Queries) ListArtifactAcceptances(ctx context.Context, jsonEach interface{}) ([]ListArtifactAcceptancesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listArtifactAcceptances, jsonEach)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListArtifactAcceptancesRow{}
+	for rows.Next() {
+		var i ListArtifactAcceptancesRow
+		if err := rows.Scan(&i.SessionID, &i.AcceptedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPendingReportSchedule = `-- name: ListPendingReportSchedule :many

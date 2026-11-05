@@ -804,3 +804,26 @@ func TestDeriveKanbanPresentationSpeaksForTheChosenPR(t *testing.T) {
 		}
 	})
 }
+
+func TestArtifactAcceptanceMovesOnlyArtifactDeliveriesToReady(t *testing.T) {
+	now := time.Now()
+	facts := contract.KanbanSessionFacts{HasArtifactOutput: true, ArtifactAccepted: true}
+	got := contract.DeriveKanbanPresentation(facts, nil, now, time.Minute)
+	if got.Column != contract.KanbanReady || got.DisplayStatus != contract.DisplayApproved {
+		t.Fatalf("accepted artifact: %+v", got)
+	}
+	facts.ArtifactAccepted = false
+	if got := contract.DeriveKanbanPresentation(facts, nil, now, time.Minute); got.Column != contract.KanbanValidating {
+		t.Fatalf("unreviewed artifact: %+v", got)
+	}
+	facts.ArtifactAccepted = true
+	facts.IsTerminated = true
+	if got := contract.DeriveKanbanPresentation(facts, nil, now, time.Minute); got.Column != contract.KanbanArchive {
+		t.Fatalf("terminated: %+v", got)
+	}
+	facts.IsTerminated = false
+	pr := contract.KanbanPRFacts{Draft: true}
+	if got := contract.DeriveKanbanPresentation(facts, []contract.KanbanPRFacts{pr}, now, time.Minute); got.Column == contract.KanbanReady {
+		t.Fatalf("artifact acceptance bypassed PR review: %+v", got)
+	}
+}

@@ -22,3 +22,27 @@ The final Kimi/permission-compatible selector passed all focused tests again, in
 ## Model-named quota regression
 
 The first build missed real `You've reached your Fable limit` failures because upstream recognized time-window quotas but not model-family quotas. Added Fable/Opus/Sonnet/Haiku family recognition, preserving rejection of unrelated memory limits and quoted prose. The regression includes the exact persisted error string and a no-reset-timestamp fallback. Added explicit excludedSessionIds for already-paused sessions. The active simulator worker (pilot-5) is excluded pending user authorization; pilot-4 was transferred to Codex with its full retained transcript and read-only review role.
+
+## Artifact acceptance — 2026-11-05, v0.14.9-fsaldivar.3
+
+- Added durable, evidence-bearing director acceptance of an exact latest `done`
+  report. SQL validates same-project director, settled live worker and artifact
+  output. A worker cannot accept itself; stale submissions cannot be accepted.
+- Artifact-only accepted deliveries derive Ready/Approved. A new report or newer
+  worker activity removes that placement. PR status derivation is unchanged.
+- Batched board reads remain bounded (the 8-vs-64-session query-count test passes).
+- Added API/CLI commands, generated OpenAPI/TypeScript/SQL, CDC invalidation,
+  director prompt and done-report delivery instructions.
+- Passed complete suites: `pkg/contract`, `internal/service/report`,
+  `internal/storage/sqlite/...`, `internal/service/session`, `internal/cli`,
+  `internal/httpd/...`, `internal/session_manager`, `internal/telemetrymeta`.
+  Log: `/private/tmp/ao-artifact-acceptance-tests-final2.log`.
+- Additional acceptance/CLI/board tests passed, including required evidence,
+  same-project ownership, idempotent retry, stale report rejection, new-activity
+  invalidation, PR isolation and HTTP conflict propagation.
+- Built daemon v0.14.9-fsaldivar.3. Packaged from pinned official v0.14.9 using the
+  existing local signing script; strict deep signature verification passed.
+- Backed up the live DB before the additive migration. Normal daemon shutdown;
+  Electron restarted the updated daemon, and existing sessions were recovered.
+  The old app is preserved as `Orchestrator Fork Before Artifact Closure.app`.
+- Full repository tests and notarization are not claimed for this local change.

@@ -59,3 +59,22 @@ ao report "The focused tests pass; I am checking the generated diff."
 ao report --done --note "Ready for review." \
   --pr-created https://github.com/owner/repo/pull/88
 ```
+
+## Director acceptance (local fork)
+
+The director owns review of artifact-only tasks; a worker's `--done` report
+alone does not approve its output. Do not wait for the user to request review.
+
+1. Run `ao report list --project "$AO_PROJECT_ID"` and inspect the latest
+   submission for each settled worker.
+2. Review the actual deliverables and validation evidence against the assigned
+   criteria, using an independent reviewer where needed. Route unresolved
+   findings to the worker; never accept partial or unverified results.
+3. Run `ao report accept <report-id> --note "Review findings" --evidence "Evidence paths or references"`.
+
+Acceptance requires an active director session in the same project, the latest
+`done` report and a settled artifact worker. It moves artifact-only work to
+Ready (done), preserving the session and history. New reports or worker activity
+invalidate it. PR tasks retain the existing PR review lifecycle. The loopback
+API attributes the director through AO_SESSION_ID; this is not an authentication
+boundary.

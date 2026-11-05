@@ -175,6 +175,14 @@ type AppSetting struct {
 	SessionRetentionDays int64
 }
 
+type ArtifactAcceptance struct {
+	ReportID          string
+	ReviewerSessionID string
+	Note              string
+	Evidence          string
+	AcceptedAt        time.Time
+}
+
 type Automation struct {
 	ID          domain.AutomationID
 	ProjectID   domain.ProjectID

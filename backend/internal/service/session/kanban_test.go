@@ -357,3 +357,42 @@ func seedKanbanTestProject(t *testing.T, st *sqlite.Store, id string) {
 		t.Fatalf("seed project %s: %v", id, err)
 	}
 }
+
+type acceptedArtifactStore struct {
+	*fakeStore
+	acceptedAt time.Time
+}
+
+func (s acceptedArtifactStore) GetArtifactAcceptance(context.Context, domain.SessionID) (time.Time, bool, error) {
+	return s.acceptedAt, true, nil
+}
+func TestArtifactAcceptanceInvalidatedByWorkerActivity(t *testing.T) {
+	now := time.Now().UTC()
+	for _, tc := range []struct {
+		name  string
+		state domain.ActivityState
+		at    time.Time
+		want  domain.KanbanColumn
+	}{
+		{"reviewed", domain.ActivityIdle, now.Add(-time.Second), domain.KanbanReady},
+		{"working again", domain.ActivityActive, now.Add(-time.Second), domain.KanbanValidating},
+		{"new completed turn", domain.ActivityIdle, now.Add(time.Second), domain.KanbanValidating},
+		{"permission pending", domain.ActivityBlocked, now.Add(-time.Second), domain.KanbanValidating},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := acceptedArtifactStore{newFakeStore(), now}
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "report.md"), []byte("verified"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			st.sessions["s"] = domain.SessionRecord{ID: "s", ProjectID: "p", Metadata: domain.SessionMetadata{ArtifactDir: dir}, OutputType: domain.SessionOutputArtifact, Activity: domain.Activity{State: tc.state, LastActivityAt: tc.at}}
+			got, err := (&Service{store: st}).Get(context.Background(), "s")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.KanbanColumn != tc.want {
+				t.Fatalf("column=%v want=%v", got.KanbanColumn, tc.want)
+			}
+		})
+	}
+}

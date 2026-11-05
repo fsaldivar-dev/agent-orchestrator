@@ -99,3 +99,55 @@ func TestReportPreservesAPIEnvelopeAsRuntimeError(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestReportAcceptRequiresReviewEvidence(t *testing.T) {
+	t.Setenv("AO_SESSION_ID", "director")
+	for _, args := range [][]string{
+		{"report", "accept", "rpt_1"},
+		{"report", "accept", "rpt_1", "--note", "reviewed"},
+		{"report", "accept", "rpt_1", "--evidence", "test log"},
+	} {
+		_, _, err := executeCLI(t, Deps{}, args...)
+		if err == nil || ExitCode(err) != 2 {
+			t.Fatalf("args=%v err=%v", args, err)
+		}
+	}
+}
+
+func TestReportAcceptUsesDaemonAndPreservesConflict(t *testing.T) {
+	t.Setenv("AO_SESSION_ID", "director")
+	cfg := setConfigEnv(t)
+	conflict := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/internal/telemetry/cli-invoked" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.URL.Path != "/api/v1/reports/accept" || r.Method != "POST" {
+			t.Errorf("unexpected request %s %s", r.Method, r.URL)
+		}
+		var got map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Error(err)
+		}
+		if got["reviewerSessionId"] != "director" || got["reportId"] != "rpt_1" || got["note"] != "reviewed" || got["evidence"] != "test log" {
+			t.Errorf("payload=%v", got)
+		}
+		if conflict {
+			w.WriteHeader(409)
+			io.WriteString(w, `{"message":"stale","code":"ARTIFACT_ACCEPTANCE_STALE","requestId":"test"}`)
+			return
+		}
+		io.WriteString(w, `{"id":"rpt_1"}`)
+	}))
+	defer srv.Close()
+	writeRunFileFor(t, cfg, srv)
+	args := []string{"report", "accept", "rpt_1", "--note", "reviewed", "--evidence", "test log"}
+	if _, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, args...); err != nil {
+		t.Fatal(err)
+	}
+	conflict = true
+	if _, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, args...); err == nil || !strings.Contains(err.Error(), "ARTIFACT_ACCEPTANCE_STALE") {
+		t.Fatalf("err=%v", err)
+	}
+}

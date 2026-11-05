@@ -42,6 +42,7 @@ func newReportCommand(ctx *commandContext) *cobra.Command {
 		o.noteSet = cmd.Flags().Changed("note")
 		return ctx.report(cmd.Context(), args, o)
 	}}
+	addReportReviewCommands(cmd, ctx)
 	f := cmd.Flags()
 	f.StringVar(&o.note, "note", "", "Structured state note")
 	f.StringArrayVar(&o.artifacts, "artifact", nil, "Attach an opaque artifact reference (repeatable)")

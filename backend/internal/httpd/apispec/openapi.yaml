@@ -5183,6 +5183,49 @@ paths:
       summary: Persist a worker report for later orchestrator delivery
       tags:
       - reports
+  /api/v1/reports/accept:
+    post:
+      operationId: acceptArtifactReport
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptArtifactReportRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateReportResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Bad Request
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Accept a settled artifact delivery after director review
+      tags:
+      - reports
   /api/v1/reviews/{reviewId}/conversation:
     get:
       operationId: getReviewerConversation
@@ -13229,6 +13272,24 @@ components:
       - error
       - code
       - message
+      type: object
+    AcceptArtifactReportRequest:
+      properties:
+        evidence:
+          maxLength: 8192
+          type: string
+        note:
+          maxLength: 1000
+          type: string
+        reportId:
+          type: string
+        reviewerSessionId:
+          type: string
+      required:
+      - reportId
+      - reviewerSessionId
+      - note
+      - evidence
       type: object
     AcknowledgeSessionInterfaceTransitionNoticeResponse:
       properties:

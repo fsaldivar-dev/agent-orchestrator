@@ -95,3 +95,29 @@ func reportContainsAll(s string, values ...string) bool {
 	}
 	return true
 }
+
+type acceptingReportService struct {
+	fakeReportService
+	accepted reportsvc.AcceptInput
+}
+
+func (s *acceptingReportService) Accept(_ context.Context, input reportsvc.AcceptInput) error {
+	s.accepted = input
+	return s.err
+}
+func TestReportsAPI_Accept(t *testing.T) {
+	svc := &acceptingReportService{}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(httpd.NewRouterWithControl(config.Config{}, log, nil, httpd.APIDeps{Reports: svc}, httpd.ControlDeps{}))
+	defer srv.Close()
+	payload := `{"reportId":"rpt_1","reviewerSessionId":"director","note":"checked","evidence":"test log"}`
+	_, status, _ := doRequest(t, srv, "POST", "/api/v1/reports/accept", payload)
+	if status != http.StatusOK || svc.accepted.ReportID != "rpt_1" || svc.accepted.Evidence != "test log" {
+		t.Fatalf("status=%v input=%+v", status, svc.accepted)
+	}
+	svc.err = apierr.Conflict("ARTIFACT_ACCEPTANCE_STALE", "stale", nil)
+	body, status, _ := doRequest(t, srv, "POST", "/api/v1/reports/accept", payload)
+	if status != http.StatusConflict || !strings.Contains(string(body), "ARTIFACT_ACCEPTANCE_STALE") {
+		t.Fatalf("status=%v body=%s", status, body)
+	}
+}

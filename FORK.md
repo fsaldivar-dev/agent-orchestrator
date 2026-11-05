@@ -32,7 +32,7 @@ Copy `scripts/local-fork/quota-fallback.example.json` to `~/.ao/data/quota-fallb
 From this checkout:
 
 ```sh
-go build -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.14.9-fsaldivar.2' -o frontend/daemon/ao ./backend/cmd/ao
+go build -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.14.9-fsaldivar.3' -o frontend/daemon/ao ./backend/cmd/ao
 ./scripts/local-fork/start.command
 ```
 
@@ -48,3 +48,18 @@ Focused regression suite: `go test -race ./backend/internal/service/chat -run '^
 Full backend: `cd backend && go test ./...`.
 Static checks: `go vet ./backend/internal/service/chat ./backend/internal/daemon`.
 See `FORK-VALIDATION.md` for actual results and limitations. No test deliberately exhausts a real subscription.
+
+## Reviewed artifact completion
+
+The fork supports `ao report list --project <id>` and
+`ao report accept <report-id> --note <findings> --evidence <references>`.
+The latter records durable director acceptance of the latest settled worker
+`done` report, scoped to the same project. Workers cannot approve themselves.
+Artifact-only cards then enter Ready (the board's done lane), with Approved
+status. New worker activity or any new report invalidates the old acceptance;
+PR-based cards still use PR review facts. Nothing is deleted or terminated.
+
+The director prompt and each done-report delivery require review and acceptance
+without waiting for a human reminder. The model must inspect evidence and route
+unresolved findings back; the daemon does not equate a worker's claim with proof.
+The loopback API's caller attribution is not an authentication boundary.

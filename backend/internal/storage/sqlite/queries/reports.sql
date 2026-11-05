@@ -118,3 +118,33 @@ UPDATE reports
 SET delivery_state = 'pending', claim_token = '', claimed_at = NULL,
     last_error = 'delivery claim recovered after daemon restart'
 WHERE delivery_state = 'claimed';
+
+-- name: AcceptArtifactReport :execrows
+INSERT INTO artifact_acceptances (report_id, reviewer_session_id, note, evidence, accepted_at)
+SELECT r.id, reviewer.id, sqlc.arg(note), sqlc.arg(evidence), sqlc.arg(accepted_at)
+FROM reports r JOIN sessions worker ON worker.id = r.session_id
+JOIN sessions reviewer ON reviewer.id = sqlc.arg(reviewer_session_id)
+WHERE r.id = sqlc.arg(report_id) AND r.state = 'done'
+AND worker.kind = 'worker' AND worker.is_terminated = FALSE
+AND worker.activity_state IN ('idle', 'exited')
+AND worker.session_output_type IN ('artifact', 'pr_artifact')
+AND reviewer.kind = 'orchestrator' AND reviewer.is_terminated = FALSE
+AND reviewer.project_id = worker.project_id
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)))
+ON CONFLICT(report_id) DO UPDATE SET report_id = excluded.report_id;
+
+-- name: GetArtifactAcceptance :one
+SELECT a.accepted_at FROM artifact_acceptances a
+JOIN reports r ON r.id = a.report_id
+WHERE r.session_id = ? AND r.state = 'done'
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)))
+ORDER BY a.accepted_at DESC LIMIT 1;
+
+-- name: ListArtifactAcceptances :many
+SELECT r.session_id, a.accepted_at FROM artifact_acceptances a
+JOIN reports r ON r.id = a.report_id
+WHERE r.session_id IN (SELECT value FROM json_each(?)) AND r.state = 'done'
+AND NOT EXISTS (SELECT 1 FROM reports newer WHERE newer.session_id = r.session_id
+ AND (newer.created_at > r.created_at OR (newer.created_at = r.created_at AND newer.id > r.id)));

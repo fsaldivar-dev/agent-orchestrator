@@ -3981,3 +3981,11 @@ type SwitchSessionAgentAccountRequest struct {
 	// account's limit. Otherwise the move waits for the turn to finish.
 	StopTurn bool `json:"stopTurn,omitempty"`
 }
+
+// AcceptArtifactReportRequest records a director's review of an exact done report.
+type AcceptArtifactReportRequest struct {
+	ReportID          string `json:"reportId"`
+	ReviewerSessionID string `json:"reviewerSessionId"`
+	Note              string `json:"note" maxLength:"1000"`
+	Evidence          string `json:"evidence" maxLength:"8192"`
+}

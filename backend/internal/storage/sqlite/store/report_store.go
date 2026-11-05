@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -321,4 +322,42 @@ func reportFromGen(r gen.Report) domain.ReportRecord {
 		AcknowledgedAt: timeFromNull(r.AcknowledgedAt), LastError: r.LastError,
 		DeliveryBatchID: r.DeliveryBatchID,
 	}
+}
+
+// AcceptArtifactReport validates ownership and the exact current submission in
+// one SQL statement. Concurrent worker reports cannot be silently approved.
+func (s *Store) AcceptArtifactReport(ctx context.Context, reportID string, reviewer domain.SessionID, note, evidence string, at time.Time) (bool, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	n, err := s.qw.AcceptArtifactReport(ctx, gen.AcceptArtifactReportParams{
+		ReportID: reportID, ReviewerSessionID: reviewer, Note: note, Evidence: evidence, AcceptedAt: at,
+	})
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
+func (s *Store) GetArtifactAcceptance(ctx context.Context, id domain.SessionID) (time.Time, bool, error) {
+	at, err := s.qr.GetArtifactAcceptance(ctx, string(id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	return at, err == nil, err
+}
+
+func (s *Store) ListArtifactAcceptances(ctx context.Context, ids []domain.SessionID) (map[domain.SessionID]time.Time, error) {
+	encoded, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.qr.ListArtifactAcceptances(ctx, string(encoded))
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[domain.SessionID]time.Time, len(rows))
+	for _, row := range rows {
+		result[domain.SessionID(row.SessionID)] = row.AcceptedAt
+	}
+	return result, nil
 }

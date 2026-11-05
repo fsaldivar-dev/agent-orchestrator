@@ -42,6 +42,7 @@ type KanbanSessionFacts struct {
 	// way. It only speaks while the worker is idle: a new turn supersedes it.
 	Interrupted       bool
 	HasArtifactOutput bool
+	ArtifactAccepted  bool
 	AutoReview        bool
 	AutoInjectReview  bool
 	AutoInjectCI      bool
@@ -247,6 +248,9 @@ func DeriveKanbanPresentation(
 ) KanbanPresentation {
 	if session.IsTerminated {
 		return KanbanPresentation{Column: KanbanArchive, DisplayStatus: DisplayTerminated}
+	}
+	if len(prs) == 0 && session.HasArtifactOutput && session.ArtifactAccepted {
+		return KanbanPresentation{Column: KanbanReady, DisplayStatus: DisplayApproved}
 	}
 	if len(prs) == 0 && session.HasArtifactOutput {
 		return KanbanPresentation{

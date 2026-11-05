@@ -28,6 +28,7 @@ type ReportsController struct{ Svc ReportService }
 // Register mounts report routes on r.
 func (c *ReportsController) Register(r chi.Router) {
 	r.Post("/reports", c.create)
+	r.Post("/reports/accept", c.accept)
 	r.Get("/reports", c.list)
 }
 
@@ -91,4 +92,27 @@ func (c *ReportsController) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envelope.WriteJSON(w, http.StatusCreated, CreateReportResponse{ID: rec.ID})
+}
+
+func (c *ReportsController) accept(w http.ResponseWriter, r *http.Request) {
+	svc, ok := c.Svc.(interface {
+		Accept(context.Context, reportsvc.AcceptInput) error
+	})
+	if !ok {
+		apispec.NotImplemented(w, r, "POST", "/api/v1/reports/accept")
+		return
+	}
+	var req AcceptArtifactReportRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		envelope.WriteAPIError(w, r, http.StatusBadRequest, "bad_request", "INVALID_JSON", "Invalid JSON body", nil)
+		return
+	}
+	err := svc.Accept(r.Context(), reportsvc.AcceptInput{ReportID: req.ReportID, ReviewerSessionID: domain.SessionID(req.ReviewerSessionID), Note: req.Note, Evidence: req.Evidence})
+	if err != nil {
+		envelope.WriteErrorWithCode(w, r, err, "ARTIFACT_ACCEPTANCE_FAILED", "Unable to accept artifact delivery")
+		return
+	}
+	envelope.WriteJSON(w, http.StatusOK, CreateReportResponse{ID: req.ReportID})
 }

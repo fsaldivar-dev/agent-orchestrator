@@ -546,6 +546,7 @@ var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names
 	"ControllersCreateReportResponse":             "CreateReportResponse",
 	"ControllersReportOutputResponse":             "ReportOutputResponse",
 	"ControllersReportResponse":                   "ReportResponse",
+	"ControllersAcceptArtifactReportRequest":      "AcceptArtifactReportRequest",
 	"ControllersListReportsResponse":              "ListReportsResponse",
 	"ControllersClearNotificationsResponse":       "ClearNotificationsResponse",
 	"ControllersUsageHookMetadata":                "UsageHookMetadata",
@@ -865,6 +866,11 @@ func identityOperations() []operation {
 
 func reportOperations() []operation {
 	return []operation{{
+		method: http.MethodPost, path: "/api/v1/reports/accept", id: "acceptArtifactReport", tag: "reports",
+		summary: "Accept a settled artifact delivery after director review",
+		reqBody: controllers.AcceptArtifactReportRequest{},
+		resps:   []respUnit{{http.StatusOK, controllers.CreateReportResponse{}}, {http.StatusBadRequest, envelope.APIError{}}, {http.StatusConflict, envelope.APIError{}}, {http.StatusInternalServerError, envelope.APIError{}}, {http.StatusNotImplemented, envelope.APIError{}}},
+	}, {
 		method: http.MethodGet, path: "/api/v1/reports", id: "listReports", tag: "reports",
 		summary:    "List persisted project reports without changing delivery state",
 		pathParams: []any{controllers.ListReportsQuery{}},

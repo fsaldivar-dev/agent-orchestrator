@@ -335,6 +335,9 @@ func (b PreparedBatch) Render() string {
 			state = "information"
 		}
 		fmt.Fprintf(&out, "\n\n[%s] %s", state, reportSessionLink(report))
+		if report.State == domain.ReportDone {
+			fmt.Fprintf(&out, "\nSubmission: %s. Review this delivery against its criteria and validation evidence without waiting for a human reminder. For verified artifact-only work, once the worker settles, record acceptance with ao report accept %s --note <review-findings> --evidence <validation-references>. Otherwise route unresolved findings back to the worker. Never accept solely because it says done.", report.ID, report.ID)
+		}
 		if report.RepeatCount > 1 {
 			fmt.Fprintf(&out, " (repeated %d times)", report.RepeatCount)
 		}

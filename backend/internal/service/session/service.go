@@ -26,6 +26,7 @@ import (
 	sessionmanager "github.com/aoagents/agent-orchestrator/backend/internal/session_manager"
 	"github.com/aoagents/agent-orchestrator/backend/internal/sessionartifacts"
 	"github.com/aoagents/agent-orchestrator/backend/internal/telemetrymeta"
+	"github.com/aoagents/agent-orchestrator/backend/pkg/contract"
 )
 
 const maxDisplayNameLen = 100
@@ -1553,10 +1554,19 @@ func (s *Service) sessionsFromRecords(ctx context.Context, filtered []domain.Ses
 			return nil, fmt.Errorf("list workspace cleanup facts: %w", err)
 		}
 	}
+	var acceptances map[domain.SessionID]time.Time
+	if reader, ok := s.store.(interface {
+		ListArtifactAcceptances(context.Context, []domain.SessionID) (map[domain.SessionID]time.Time, error)
+	}); ok {
+		acceptances, err = reader.ListArtifactAcceptances(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+	}
 	out := make([]domain.Session, 0, len(filtered))
 	for _, rec := range filtered {
 		facts, found := cleanupBySession[rec.ID]
-		sess, err := s.toSessionWithFacts(ctx, rec, prsBySession[rec.ID], runsBySession[rec.ID], interrupted[rec.ID], currentWorkspaceCleanup(rec, facts, found))
+		sess, err := s.toSessionWithFacts(ctx, rec, prsBySession[rec.ID], runsBySession[rec.ID], interrupted[rec.ID], currentWorkspaceCleanup(rec, facts, found), acceptances[rec.ID])
 		if err != nil {
 			return nil, err
 		}
@@ -1657,7 +1667,7 @@ func (s *Service) Get(ctx context.Context, id domain.SessionID) (domain.Session,
 	return sess, nil
 }
 
-func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionRecord, prs []domain.PRFacts, runs []domain.CurrentHeadReviewRun, interrupted bool, cleanup domain.SessionCleanupRecord) (domain.Session, error) {
+func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionRecord, prs []domain.PRFacts, runs []domain.CurrentHeadReviewRun, interrupted bool, cleanup domain.SessionCleanupRecord, acceptedAt time.Time) (domain.Session, error) {
 	// A row created before artifact_dir existed carries it as '' (the
 	// migration's default) even though session_manager always prompts the
 	// agent to write into the deterministic dataDir/artifacts/<id> path.
@@ -1713,6 +1723,14 @@ func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionReco
 	// recomputed here so the API and Kanban see the same durable
 	// classification rather than a value that can differ read to read.
 	presentation := deriveKanbanPresentation(rec, prs, runs, interrupted, now, s.harnessSignals(rec.Harness))
+	if len(prs) == 0 && rec.OutputType.HasArtifact() && !rec.IsTerminated &&
+		(rec.Activity.State == domain.ActivityIdle || rec.Activity.State == domain.ActivityExited) &&
+		!acceptedAt.IsZero() && !rec.Activity.LastActivityAt.After(acceptedAt) {
+		facts := toContractKanbanSessionFacts(rec, interrupted, s.harnessSignals(rec.Harness))
+		facts.ArtifactAccepted = true
+		presentation = contract.DeriveKanbanPresentation(facts, nil, now, noSignalGrace)
+	}
+
 	readiness := "ready"
 	if recovery, ok := s.manager.(interface {
 		SessionStatusReadiness(domain.SessionRecord) string
@@ -2042,7 +2060,17 @@ func (s *Service) toSession(ctx context.Context, rec domain.SessionRecord) (doma
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("interrupted turn %s: %w", rec.ID, err)
 	}
-	return s.toSessionWithFacts(ctx, rec, prs, runs, interrupted[rec.ID], cleanup)
+	var acceptedAt time.Time
+	if reader, ok := s.store.(interface {
+		GetArtifactAcceptance(context.Context, domain.SessionID) (time.Time, bool, error)
+	}); ok {
+		var err error
+		acceptedAt, _, err = reader.GetArtifactAcceptance(ctx, rec.ID)
+		if err != nil {
+			return domain.Session{}, err
+		}
+	}
+	return s.toSessionWithFacts(ctx, rec, prs, runs, interrupted[rec.ID], cleanup, acceptedAt)
 }
 
 // currentWorkspaceCleanup is the teardown recorded for an archived session,
