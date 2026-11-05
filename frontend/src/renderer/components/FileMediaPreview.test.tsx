@@ -10,7 +10,14 @@ vi.mock("../hooks/useHostConnection", () => ({
 }));
 
 vi.mock("pdfjs-dist/build/pdf.worker.min.mjs?url", () => ({ default: "pdf.worker.js" }));
-vi.mock("pdfjs-dist", () => ({ GlobalWorkerOptions: {}, getDocument: vi.fn(), TextLayer: class {} }));
+vi.mock("pdfjs-dist", () => ({
+	GlobalWorkerOptions: {},
+	getDocument: vi.fn(),
+	TextLayer: class {
+		async render() {}
+		cancel() {}
+	},
+}));
 
 describe("FileMediaPreview", () => {
 	afterEach(() => {
@@ -122,6 +129,7 @@ describe("FileMediaPreview", () => {
 		render(<FileMediaPreview kind="pdf" path="report.pdf" sessionId="session-1" source={source} version={1} />);
 
 		await waitFor(() => expect(document.querySelectorAll("[data-page-number]")).toHaveLength(2));
+		await waitFor(() => expect(document.querySelectorAll(".endOfContent")).toHaveLength(2));
 		expect(fetchFile).toHaveBeenCalledWith(source.rawUrl);
 		expect(getDocument).toHaveBeenCalledWith({ data: bytes });
 		expect(browserFetch).not.toHaveBeenCalled();
