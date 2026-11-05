@@ -81,7 +81,7 @@ export function PeopleField({
 	const ownInputRef = useRef<HTMLInputElement>(null);
 	const inputRef = externalInputRef ?? ownInputRef;
 	const fieldRef = useRef<HTMLDivElement>(null);
-	const blurTimer = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
+	const blurTimer = useRef<number | undefined>(undefined);
 	useEffect(() => () => window.clearTimeout(blurTimer.current), []);
 	// The list is portaled outside any modal dialog, whose scroll lock cancels
 	// wheel events there; scroll it directly, as SearchablePicker does.
