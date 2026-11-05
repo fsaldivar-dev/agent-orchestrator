@@ -408,7 +408,7 @@ describe("HumanMessage attachments", () => {
 			/>,
 		);
 
-		expect(container.querySelector(".cursor-chat-human-message > p")?.textContent).toBe(
+		expect(container.querySelector(".cursor-chat-human-message [data-chat-message-body]")?.textContent).toBe(
 			authoredBody,
 		);
 	});
@@ -458,7 +458,7 @@ describe("HumanMessage attachments", () => {
 			/>,
 		);
 
-		const paragraph = container.querySelector(".cursor-chat-human-message > p");
+		const paragraph = container.querySelector(".cursor-chat-human-message [data-chat-message-body]");
 		expect(paragraph).toHaveTextContent("before Image 1 after");
 		expect(paragraph).not.toHaveTextContent(".ao/attachments");
 		await userEvent.click(within(paragraph as HTMLElement).getByRole("button", { name: "Open image: Image 1" }));
@@ -481,7 +481,7 @@ describe("HumanMessage attachments", () => {
 		const text = "Notes:\n- fix *bug*\nao://sessions/proj/sess\n> write test";
 		const { container } = render(<HumanMessage message={humanMessage(text)} sessionId="ao-1" />);
 
-		const paragraph = container.querySelector(".cursor-chat-human-message > p");
+		const paragraph = container.querySelector(".cursor-chat-human-message [data-chat-message-body]");
 		expect(paragraph).toHaveClass("whitespace-pre-wrap");
 		expect(paragraph?.textContent).toBe(text);
 		expect(screen.getByRole("link", { name: "ao://sessions/proj/sess" })).toBeInTheDocument();
@@ -1135,6 +1135,8 @@ describe("ChatWorkspace timeline", () => {
 		expect(screen.getByText("The implementation is correct.")).toBeVisible();
 		// The fold names the time, so the answer's own row does not repeat it.
 		expect(document.querySelector("[data-turn-duration]")).toBeNull();
+		// "Worked for" fills the row under the prompt, so no empty one is reserved.
+		expect(document.querySelector("[data-turn-worked-gap]")).toBeNull();
 
 		await user.click(worked);
 		expect(screen.getByText("I found the relevant component.")).toBeVisible();
@@ -1170,12 +1172,14 @@ describe("ChatWorkspace timeline", () => {
 
 		render(<ChatWorkspace snapshot={snapshot} />);
 
-		// Nothing to fold, so no "Worked for": the time leads the answer's action row instead.
+		// Nothing to fold, so no "Worked for": the time ends the answer's action row instead.
 		expect(screen.queryByRole("button", { name: /Worked for/ })).not.toBeInTheDocument();
+		// An empty row of the same height keeps the prompt's hover actions off the answer.
+		expect(document.querySelector("[data-turn-worked-gap]")).toBeInTheDocument();
 		const duration = screen.getByText("1m");
 		const copy = screen.getByRole("button", { name: "Copy message as markdown" });
 		expect(duration.closest("[data-turn-actions]")).toBe(copy.closest("[data-turn-actions]"));
-		expect(duration.compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(copy.compareDocumentPosition(duration) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 
 	it("keeps only the run the agent is working in open while the turn runs", () => {
@@ -1482,7 +1486,7 @@ describe("ChatWorkspace timeline", () => {
 		selection.removeAllRanges(); fireEvent(document, new Event("selectionchange"));
 		selection.addRange(range); fireEvent.pointerUp(document.body);
 		button = screen.getByRole("button", { name: "Add to chat" });
-		expect(button).toHaveClass("hover:bg-interactive-hover");
+		expect(button).toHaveClass("text-muted-foreground", "hover:text-foreground");
 		expect(button.querySelector("svg")).toBeNull();
 		expect(button.parentElement).toHaveClass("bg-overlay", "border-(--color-border-overlay)", "rounded-lg", "w-max");
 		fireEvent.mouseDown(button);
