@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,10 +22,11 @@ import (
 // Each role ranks candidates; exhausted choices follow the continuation
 // lineage durably, so the selector cannot loop back to an exhausted model.
 type QuotaFallbackPolicy struct {
-	Enabled    bool                                         `json:"enabled"`
-	ProjectIDs []domain.ProjectID                           `json:"projectIds"`
-	Chain      []QuotaFallbackTarget                        `json:"chain"`
-	RoleChains map[domain.SessionKind][]QuotaFallbackTarget `json:"roleChains,omitempty"`
+	ExcludedSessionIDs []domain.SessionID                           `json:"excludedSessionIds,omitempty"`
+	Enabled            bool                                         `json:"enabled"`
+	ProjectIDs         []domain.ProjectID                           `json:"projectIds"`
+	Chain              []QuotaFallbackTarget                        `json:"chain"`
+	RoleChains         map[domain.SessionKind][]QuotaFallbackTarget `json:"roleChains,omitempty"`
 }
 type QuotaFallbackTarget struct {
 	Harness domain.AgentHarness `json:"harness"`
@@ -98,7 +100,7 @@ func (s *Service) RunQuotaFallbacks(ctx context.Context, policy QuotaFallbackPol
 			errs = append(errs, err)
 			continue
 		}
-		if !found || !quotaFallbackProject(policy, record.ProjectID) || validateUsageLimitSession(record) != nil {
+		if !found || slices.Contains(policy.ExcludedSessionIDs, record.ID) || !quotaFallbackProject(policy, record.ProjectID) || validateUsageLimitSession(record) != nil {
 			continue
 		}
 		c, err := s.Controller(id)

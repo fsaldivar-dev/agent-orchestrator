@@ -309,3 +309,34 @@ func TestQuotaFallbackAdvancesAcrossProvidersAndStops(t *testing.T) {
 		t.Fatalf("wanted two handoffs then hold, got %d starts", driver.startCalls)
 	}
 }
+
+func TestQuotaFallbackRecognizesStoredFableRefusalWithoutReset(t *testing.T) {
+	h, _, driver := newEditHarness(t, false)
+	source := failUsageLimitedTurn(t, h, "You've reached your Fable limit. Switch to another model, or manage usage credits at https://claude.ai/settings/usage?from=cc_cli_limit_message, to continue.")
+	if source.UsageLimit == nil || source.UsageLimit.ResetsAt != nil {
+		t.Fatal("stored model quota refusal must be actionable without a reset timestamp")
+	}
+	if err := h.svc.RunQuotaFallbacks(context.Background(), fallbackPolicy()); err != nil {
+		t.Fatal(err)
+	}
+	driver.mu.Lock()
+	defer driver.mu.Unlock()
+	if driver.startCalls != 2 || len(driver.fresh.sentMessages()) != 1 {
+		t.Fatal("stored Fable failure was not continued")
+	}
+}
+
+func TestQuotaFallbackExcludesExplicitlyPausedSession(t *testing.T) {
+	h, _, driver := newEditHarness(t, false)
+	failUsageLimitedTurn(t, h, "You've reached your Fable limit. Switch to another model.")
+	policy := fallbackPolicy()
+	policy.ExcludedSessionIDs = []domain.SessionID{testSession}
+	if err := h.svc.RunQuotaFallbacks(context.Background(), policy); err != nil {
+		t.Fatal(err)
+	}
+	driver.mu.Lock()
+	defer driver.mu.Unlock()
+	if driver.startCalls != 1 {
+		t.Fatal("excluded session was automatically moved")
+	}
+}

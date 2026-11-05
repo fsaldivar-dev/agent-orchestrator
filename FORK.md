@@ -25,14 +25,14 @@ Each operation is an idempotent, durable system activity in the existing convers
 
 ## Configure
 
-Copy `scripts/local-fork/quota-fallback.example.json` to `~/.ao/data/quota-fallback.json`. The default enables only `mexquiapp-pilot`. `roleChains` overrides the default `chain` for a worker or director. Model IDs must exist in the authenticated CLI's catalog. Config is reread on the normal daemon recovery sweep; no restart is needed for policy edits.
+Copy `scripts/local-fork/quota-fallback.example.json` to `~/.ao/data/quota-fallback.json`. The default enables only `mexquiapp-pilot`. `roleChains` overrides the default `chain` for a worker or director. Model IDs must exist in the authenticated CLI's catalog. `excludedSessionIds` can keep explicitly paused sessions outside automatic recovery. Config is reread on the normal daemon recovery sweep; no restart is needed for policy edits.
 
 ## Build and run
 
 From this checkout:
 
 ```sh
-go build -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.14.9-fsaldivar.1' -o frontend/daemon/ao ./backend/cmd/ao
+go build -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.14.9-fsaldivar.2' -o frontend/daemon/ao ./backend/cmd/ao
 ./scripts/local-fork/start.command
 ```
 

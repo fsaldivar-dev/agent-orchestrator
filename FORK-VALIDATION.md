@@ -11,10 +11,14 @@ Base: upstream tag v0.14.9. Change: opt-in quota fallback using local CLI driver
 
 ## Local runtime
 
-- Built CLI reports `0.14.9-fsaldivar.1`.
+- Built CLI reports `0.14.9-fsaldivar.2`.
 - Isolated daemon on port 13001: `/healthz` = ok, `/readyz` = ready, `/api/v1/sessions` returned an empty list as expected with temporary data.
 - Production configuration saved at `~/.ao/data/quota-fallback.json`, scoped only to `mexquiapp-pilot`.
 - Pre-activation SQLite backup: `~/.ao/data/fork-backups/20261105-080238/ao.db` with session inventory.
-- Launcher: `~/Applications/Orchestrator Fork.command`. The original vendor desktop is unchanged. The fork copy started successfully with health=ok, ready=ready, and five existing nonterminated sessions on the same branches. The backend version is `0.14.9-fsaldivar.1`; the executable path is under `Orchestrator Fork.app`.
+- Launcher: `~/Applications/Orchestrator Fork.command`. The original vendor desktop is unchanged. The fork copy started successfully with health=ok, ready=ready, and five existing nonterminated sessions on the same branches. The backend version is `0.14.9-fsaldivar.2`; the executable path is under `Orchestrator Fork.app`.
 
 The final Kimi/permission-compatible selector passed all focused tests again, including race instrumentation. A real provider quota exhaustion has not been forced.
+
+## Model-named quota regression
+
+The first build missed real `You've reached your Fable limit` failures because upstream recognized time-window quotas but not model-family quotas. Added Fable/Opus/Sonnet/Haiku family recognition, preserving rejection of unrelated memory limits and quoted prose. The regression includes the exact persisted error string and a no-reset-timestamp fallback. Added explicit excludedSessionIds for already-paused sessions. The active simulator worker (pilot-5) is excluded pending user authorization; pilot-4 was transferred to Codex with its full retained transcript and read-only review role.
