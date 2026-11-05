@@ -33,6 +33,7 @@ export function ProjectBoardActions({ actions, placement, quiet = false, cloud =
 						className={header ? "topbar-control--labeled" : undefined}
 						data-priority={header ? "secondary" : undefined}
 						disabled={busy}
+						data-ph-capture-attribute-ao_action="open_orchestrator"
 						onClick={() => openOrchestrator()}
 						// The header never demotes Orchestrator; it is the region's one primary.
 						variant={header || !quiet ? "primary" : "secondary"}
@@ -54,6 +55,7 @@ export function ProjectBoardActions({ actions, placement, quiet = false, cloud =
 						className={header ? "topbar-control--labeled" : undefined}
 						data-priority={header ? "primary" : undefined}
 						disabled={isProjectRestarting || isProvisioning}
+						data-ph-capture-attribute-ao_action="new_task"
 						onClick={openNewTask}
 						// One filled primary per region: in the header Task stays a utility control.
 						variant={header ? "action" : quiet || cloud ? "secondary" : "accent"}

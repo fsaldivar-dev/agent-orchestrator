@@ -111,6 +111,7 @@ export function SessionTopbarActions({
 									className="topbar-control--labeled"
 									data-priority="primary"
 									disabled={startingOrchestrator || isProjectRestarting || isProvisioning}
+									data-ph-capture-attribute-ao_action="new_task"
 									onClick={openNewTask}
 									variant="primary"
 								>
@@ -223,6 +224,7 @@ export function SessionTopbarActions({
 								className="topbar-control--labeled"
 								data-priority="secondary"
 								disabled={isSpawning || isProjectRestarting || isProvisioning}
+								data-ph-capture-attribute-ao_action="open_orchestrator"
 								onClick={() => void openOrchestrator()}
 								variant="primary"
 							>
