@@ -746,7 +746,7 @@ func newEditHarnessWithOptions(
 		}, nil
 	})
 	svc := chatsvc.New(chatsvc.Options{
-		Store: wrapStore(st), Sessions: st,
+		Store: wrapStore(st), Sessions: st, DataDir: t.TempDir(),
 		Reader:     wrapReader(reader),
 		PageReader: boundedSnapshotReader(st),
 		Drivers:    fakeRegistry{driver: driver},
@@ -775,6 +775,7 @@ func newEditHarnessWithOptions(
 	if err != nil || !found {
 		t.Fatalf("GetSession: found=%v err=%v", found, err)
 	}
+	record.Metadata.WorkspacePath = workspace
 	record.Metadata.ProviderConversationID = "thread-1"
 	record.Metadata.ControllerGeneration = ctrl.Generation()
 	if err := st.UpdateSession(context.Background(), record); err != nil {

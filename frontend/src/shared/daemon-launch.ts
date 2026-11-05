@@ -27,7 +27,8 @@ export function resolveDaemonLaunch(
 		return {
 			command: configuredCommand,
 			args: [],
-			cwd: appPath,
+			// appPath is a file (app.asar) in packaged Electron builds.
+			cwd: homeDir,
 			shell: true,
 			source: "configured",
 		};

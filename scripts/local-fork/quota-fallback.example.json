@@ -1,0 +1,98 @@
+{
+  "enabled": true,
+  "projectIds": [
+    "mexquiapp-pilot"
+  ],
+  "chain": [
+    {
+      "harness": "claude-code",
+      "model": ""
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    },
+    {
+      "harness": "claude-code",
+      "model": "claude-opus-5-5",
+      "effort": "high"
+    },
+    {
+      "harness": "kimi",
+      "model": "kimi-code/k3.1-pro"
+    },
+    {
+      "harness": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "effort": "high"
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    }
+  ],
+  "roleChains": {
+    "orchestrator": [
+      {
+        "harness": "claude-code",
+        "model": ""
+      },
+      {
+        "harness": "codex",
+        "model": "gpt-6.1-sol",
+        "effort": "high"
+      },
+      {
+        "harness": "claude-code",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      {
+        "harness": "kimi",
+        "model": "kimi-code/k3.1-pro"
+      },
+      {
+        "harness": "claude-code",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      {
+        "harness": "codex",
+        "model": "gpt-6.1-terra",
+        "effort": "high"
+      }
+    ],
+    "worker": [
+      {
+        "harness": "claude-code",
+        "model": ""
+      },
+      {
+        "harness": "codex",
+        "model": "gpt-6.1-sol",
+        "effort": "medium"
+      },
+      {
+        "harness": "claude-code",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      {
+        "harness": "kimi",
+        "model": "kimi-code/k3.1-pro"
+      },
+      {
+        "harness": "codex",
+        "model": "gpt-6.1-terra",
+        "effort": "high"
+      },
+      {
+        "harness": "claude-code",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      }
+    ]
+  }
+}

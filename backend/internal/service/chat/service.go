@@ -96,6 +96,7 @@ type Service struct {
 	waking                map[domain.SessionID]int
 	wakeRuns              map[domain.SessionID]*wakeRun
 	backgroundWakes       map[domain.SessionID]bool
+	quotaFallbackMu       sync.Mutex
 	autoResumeMu          sync.Mutex
 	autoResumeRetryAt     map[string]time.Time
 	autoResumeInFlight    map[string]bool

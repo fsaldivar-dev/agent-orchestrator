@@ -8,11 +8,18 @@ describe("resolveDaemonLaunch", () => {
 		).toEqual({
 			command: "/tmp/ao daemon",
 			args: [],
-			cwd: "/app",
+			cwd: "/home/user",
 			shell: true,
 			source: "configured",
 		});
 	});
+
+	it("uses a real directory for configured packaged daemons", () => {
+        expect(resolveDaemonLaunch({ AO_DAEMON_COMMAND: "/tmp/ao daemon" }, true,
+            "/Applications/Orchestrator.app/Contents/Resources",
+            "/Applications/Orchestrator.app/Contents/Resources/app.asar", "/Users/test", "darwin")?.cwd
+        ).toBe("/Users/test");
+    });
 
 	it("uses the prebuilt daemon binary in non-Windows dev", () => {
 		expect(resolveDaemonLaunch({}, false, "/resources", "/repo/frontend", "/home/user", "darwin")).toEqual({

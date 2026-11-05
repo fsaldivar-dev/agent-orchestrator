@@ -1355,6 +1355,9 @@ func Run(buildVersion string) error {
 				// must not stop the next tick discovering another session's deadline.
 				sweeps.Go(func() {
 					defer sentryobs.RecoverBackground()
+					if err := chatSvc.ResumeQuotaFallbacks(ctx); err != nil && ctx.Err() == nil {
+						log.Warn("quota fallback failed", "err", err)
+					}
 					if err := chatSvc.ResumeUsageLimitedTurns(ctx); err != nil && ctx.Err() == nil {
 						log.Warn("usage-limit auto-resume failed", "err", err)
 					}
